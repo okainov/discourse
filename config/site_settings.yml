@@ -291,7 +291,6 @@ basic:
   enable_direct_s3_uploads:
     client: true
     default: false
-    hidden: true
   enable_upload_debug_mode:
     default: false
     hidden: true
@@ -411,6 +410,22 @@ basic:
   show_user_menu_avatars:
     client: true
     default: false
+  extended_site_description:
+    default: ""
+    max: 10_000
+    hidden: true
+  extended_site_description_cooked:
+    default: ""
+    hidden: true
+    max: 15_000
+  about_banner_image:
+    default: ""
+    type: upload
+    hidden: true
+  community_owner:
+    default: ""
+    max: 300
+    hidden: true
 login:
   invite_only:
     refresh: true
@@ -1996,7 +2011,7 @@ security:
     allow_any: false
     choices: "['*'] + Onebox::Engine.all_iframe_origins"
   allowed_iframes:
-    default: "https://www.google.com/maps/embed?|https://www.openstreetmap.org/export/embed.html?|https://calendar.google.com/calendar/embed?|https://codepen.io/|https://www.instagram.com"
+    default: "https://www.google.com/maps/embed?|https://www.openstreetmap.org/export/embed.html?|https://calendar.google.com/calendar/embed?|https://codepen.io/|https://www.instagram.com|https://open.spotify.com"
     type: list
     list_type: simple
     client: true
@@ -2025,6 +2040,7 @@ security:
   content_security_policy_script_src:
     type: simple_list
     default: ""
+    validator: "CspScriptSrcValidator"
   invalidate_inactive_admin_email_after_days:
     default: 365
     min: 0
@@ -3046,6 +3062,9 @@ api:
   retain_web_hook_events_period_days:
     default: 30
     max: 36500
+  retain_web_hook_events_aggregate_days:
+    default: 720
+    max: 36500
   retry_web_hook_events:
     default: false
   api_key_last_used_epoch:
@@ -3224,3 +3243,7 @@ dashboard:
   hot_topics_recent_days:
     hidden: true
     default: 7
+  admin_allow_filter_untranslated_text:
+    hidden: true
+    default: false
+    client: true

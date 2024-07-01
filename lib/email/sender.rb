@@ -360,6 +360,8 @@ module Email
 
       email_size = 0
       posts.each do |post|
+        next unless DiscoursePluginRegistry.apply_modifier(:should_add_email_attachments, post)
+
         post.uploads.each do |original_upload|
           optimized_1X = original_upload.optimized_images.first
 
@@ -435,12 +437,18 @@ module Email
     # Due to mail gem magic, @message.text_part and @message.html_part still
     # refer to the same objects.
     #
+    # Most imporantly, we need to specify the boundary for the multipart/mixed
+    # part of the email, otherwise we can end up with an email that appears to
+    # be empty with the entire body attached as a single attachment, and some
+    # mail parsers consider the entire email as a preamble/epilogue.
+    #
+    # c.f. https://www.w3.org/Protocols/rfc1341/7_2_Multipart.html
     def fix_parts_after_attachments!
       has_attachments = @message.attachments.present?
       has_alternative_renderings = @message.html_part.present? && @message.text_part.present?
 
       if has_attachments && has_alternative_renderings
-        @message.content_type = "multipart/mixed"
+        @message.content_type = "multipart/mixed; boundary=\"#{@message.body.boundary}\""
 
         html_part = @message.html_part
         @message.html_part = nil
