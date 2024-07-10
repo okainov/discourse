@@ -859,14 +859,21 @@ class BulkImport::Generic < BulkImport::Base
           name = user_full_name_from_id(user_id)
         end
 
+        if quote["post_id"]
+          topic_id = topic_id_from_imported_post_id(quote["post_id"])
+          post_number = post_number_from_imported_id(quote["post_id"])
+        end
+
+        bbcode_parts = []
+
+        bbcode_parts << name if name.present?
+        bbcode_parts << username if name.blank? && username.present?
+        bbcode_parts << "post:#{post_number}" if post_number.present?
+        bbcode_parts << "topic:#{topic_id}" if topic_id.present?
+        bbcode_parts << "username:#{username}" if username.present?
+
         bbcode =
-          if username.present? && name.present?
-            %Q|[quote="#{name}, username:#{username}"]|
-          elsif username.present?
-            %Q|[quote="#{username}"]|
-          else
-            "[quote]"
-          end
+          username.blank? && name.blank? ? "[quote]" : %Q|[quote="#{bbcode_parts.join(", ")}"]|
 
         raw.gsub!(quote["placeholder"], bbcode)
       end
