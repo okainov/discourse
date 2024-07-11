@@ -5,8 +5,8 @@ require "mysql2"
 require File.expand_path(File.dirname(__FILE__) + "/base.rb")
 
 class ImportScripts::Phorum < ImportScripts::Base
-  PHORUM_DB = "piwik"
-  TABLE_PREFIX = "pw_"
+  PHORUM_DB = "phorum"
+  TABLE_PREFIX = "phorum_"
   BATCH_SIZE = 1000
 
   def initialize
@@ -16,7 +16,7 @@ class ImportScripts::Phorum < ImportScripts::Base
       Mysql2::Client.new(
         host: "localhost",
         username: "root",
-        password: "pa$$word",
+        password: "",
         database: PHORUM_DB,
       )
   end
@@ -37,7 +37,7 @@ class ImportScripts::Phorum < ImportScripts::Base
       results =
         mysql_query(
           "SELECT user_id id, username, TRIM(email) AS email, username name, date_added created_at,
-                date_last_active last_seen_at, admin
+                date_last_active last_seen_at, admin, uid
          FROM #{TABLE_PREFIX}users
          WHERE #{TABLE_PREFIX}users.active = 1
          LIMIT #{BATCH_SIZE}
@@ -55,6 +55,9 @@ class ImportScripts::Phorum < ImportScripts::Base
           name: user["name"],
           created_at: Time.zone.at(user["created_at"]),
           last_seen_at: Time.zone.at(user["last_seen_at"]),
+          custom_fields: {
+              geocaching_uid: user["uid"],
+          },
           admin: user["admin"] == 1,
         }
       end
@@ -79,9 +82,9 @@ class ImportScripts::Phorum < ImportScripts::Base
     end
 
     # uncomment below lines to create permalink
-    # categories.each do |category|
-    #   Permalink.create(url: "list.php?#{category['id']}", category_id: category_id_from_imported_category_id(category['id'].to_i))
-    # end
+    categories.each do |category|
+      Permalink.create(url: "list.php?#{category['id']}", category_id: category_id_from_imported_category_id(category['id'].to_i))
+    end
   end
 
   def import_posts
@@ -136,12 +139,12 @@ class ImportScripts::Phorum < ImportScripts::Base
       end
 
       # uncomment below lines to create permalink
-      # results.each do |post|
-      #   if post['parent_id'] == 0
-      #     topic = topic_lookup_from_imported_post_id(post['id'].to_i)
-      #     Permalink.create(url: "read.php?#{post['category_id']},#{post['id']}", topic_id: topic[:topic_id].to_i)
-      #   end
-      # end
+      results.each do |post|
+        if post['parent_id'] == 0
+          topic = topic_lookup_from_imported_post_id(post['id'].to_i)
+          Permalink.create(url: "read.php?#{post['category_id']},#{post['id']}", topic_id: topic[:topic_id].to_i)
+        end
+      end
     end
   end
 
