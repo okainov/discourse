@@ -176,6 +176,20 @@ class ImportScripts::Phorum < ImportScripts::Base
     # [QUOTE]...[/QUOTE]
     s.gsub!(%r{\[quote\](.+?)\[/quote\]}im) { "\n> #{$1}\n" }
 
+    # Nested Quotes
+    s.gsub!(%r{(\[/?QUOTE.*?\])}mi) { |q| "\n#{q}\n" }
+
+    # [QUOTE=username]
+    s.gsub!(/\[quote=(.*?)\]/i) do
+      username = $1
+
+      "\n[quote=\"#{username}\"]\n"
+    end
+
+    # [size=...]...[/size]
+    s.gsub!(%r{\[size=large](.+)\[/size\]}i) { "<big>{$1}</big>" }
+    s.gsub!(%r{\[size=x.large](.+)\[/size\]}i) { "<big>{$1}</big>" }
+
     # [URL=...]...[/URL]
     s.gsub!(%r{\[url="?(.+?)"?\](.+)\[/url\]}i) { "[#{$2}](#{$1})" }
 
