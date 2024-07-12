@@ -189,11 +189,11 @@ class ImportScripts::Phorum < ImportScripts::Base
     end
 
     # [size=...]...[/size]
-    s.gsub!(%r{\[size=large](.+)\[/size\]}i) { "<big>#{$1}</big>" }
-    s.gsub!(%r{\[size=x.large](.+)\[/size\]}i) { "<big>#{$1}</big>" }
-    s.gsub!(%r{\[size=medium](.+)\[/size\]}i) { "#{$1}" }
-    s.gsub!(%r{\[size=small](.+)\[/size\]}i) { "<small>#{$1}</small>" }
-    s.gsub!(%r{\[size=x.small](.+)\[/size\]}i) { "<small>#{$1}</small>" }
+    s.gsub!(%r{\[size=large\](.+)\[/size\]}i) { "<big>#{$1}</big>" }
+    s.gsub!(%r{\[size=x.large\](.+)\[/size\]}i) { "<big>#{$1}</big>" }
+    s.gsub!(%r{\[size=medium\](.+)\[/size\]}i) { "#{$1}" }
+    s.gsub!(%r{\[size=small\](.+)\[/size\]}i) { "<small>#{$1}</small>" }
+    s.gsub!(%r{\[size=x.small\](.+)\[/size\]}i) { "<small>#{$1}</small>" }
 
     # [spoiler]...[/spoiler] is not Discourse Spoiler, but details
     s.gsub!(%r{\[spoiler=(.+?)\](.+)\[/spoiler\]}i) { "[details=#{$1}](#{$2})[/details]" }
