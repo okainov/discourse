@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "mysql2"
+require "htmlentities"
 
 begin
   require "php_serialize" # https://github.com/jqr/php-serialize
@@ -27,6 +28,7 @@ class ImportScripts::Phorum < ImportScripts::Base
   def initialize
     super
 
+    @htmlentities = HTMLEntities.new
     @client =
       Mysql2::Client.new(
         host: "localhost",
@@ -224,36 +226,38 @@ end
         ).to_a
 
       break if results.size < 1
+      results.reject! { |pm| @lookup.post_already_imported?("pm-#{m["id"]}") }
+      title_username_of_pm_first_post = {}
 
-      create_messages(results, total: total_count, offset: offset) do |m|
+      create_posts(results, total: total_count, offset: offset) do |m|
         skip = false
         mapped = {}
 
-        mapped[:archetype] = Archetype.private_message
-        mapped[:id] = m["id"]
+        mapped[:id] = "pm-#{m["id"]}"
         title = @htmlentities.decode(m["title"]).strip[0...255]
-        mapped[:title] = title
         mapped[:user_id] = user_id_from_imported_user_id(m["user_id"]) || -1
         mapped[:raw] = process_raw_post(m["message"], m["id"])
-        mapped[:target_usernames] = target_usernames.join(",")
         mapped[:created_at] = Time.zone.at(m["created_at"])
 
         
         target_usernames = []
         target_userids = []
         begin
-          to_user_array = PHP.unserialize(m["meta"])["recepients"]
+          to_user_array = PHP.unserialize(m["meta"])["recipients"]
         rescue StandardError
           puts "#{m["id"]} -- #{m["meta"]}"
           skip = true
         end
         
         begin
-          to_user_array.each do |to_user|
+          # The key is the ID of the user, so we only need key
+          to_user_array.each do |to_user, user_hash|
+            #puts "Looking for user #{to_user}..."
             user_id = user_id_from_imported_user_id(to_user["user_id"])
             username = User.find_by(id: user_id).try(:username)
             target_userids << user_id || Discourse::SYSTEM_USER_ID
             target_usernames << username if username
+            #puts "Found #{username} with Discourse ID #{user_id}"
           end
         rescue StandardError
           puts "skipping pm-#{m["id"]} `to_user_array` is not properly serialized -- #{to_user_array.inspect}"
@@ -268,11 +272,35 @@ end
           puts "one of the participant's id is nil -- #{participants.inspect}"
         end
 
-        mapped[:target_usernames] = target_usernames.join(",")
-        if mapped[:target_usernames].size < 1 # pm with yourself?
-          # skip = true
-          mapped[:target_usernames] = "system"
-          puts "pm-#{m["id"]} has no target (#{m["meta"]})"
+        if title =~ /^Re:/
+          parent_id =
+            title_username_of_pm_first_post[[title[3..-1], participants]] ||
+              title_username_of_pm_first_post[[title[4..-1], participants]] ||
+              title_username_of_pm_first_post[[title[5..-1], participants]] ||
+              title_username_of_pm_first_post[[title[6..-1], participants]] ||
+              title_username_of_pm_first_post[[title[7..-1], participants]] ||
+              title_username_of_pm_first_post[[title[8..-1], participants]]
+
+          if parent_id
+            if t = topic_lookup_from_imported_post_id("pm-#{parent_id}")
+              topic_id = t[:topic_id]
+            end
+          end
+        else
+          title_username_of_pm_first_post[[title, participants]] ||= m["id"]
+        end
+        if topic_id
+          mapped[:topic_id] = topic_id
+        else
+          mapped[:title] = title
+          mapped[:archetype] = Archetype.private_message
+          mapped[:target_usernames] = target_usernames.join(",")
+
+          if mapped[:target_usernames].size < 1 # pm with yourself?
+            # skip = true
+            mapped[:target_usernames] = "system"
+          puts "pm-#{m["id"]} has no target (#{to_user_array.inspect})"
+          end
         end
 
         skip ? nil : mapped
