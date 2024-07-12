@@ -7,7 +7,8 @@ require File.expand_path(File.dirname(__FILE__) + "/base.rb")
 class ImportScripts::Phorum < ImportScripts::Base
   PHORUM_DB = "phorum"
   TABLE_PREFIX = "phorum_"
-  # Set to non-empty value ending with "/" for permalinks
+  # Set to non-empty value ending with "/" for permalinks.
+  # If using example.com/forum, the value should be "forum/"
   BASE = "phorum/"
   BATCH_SIZE = 1000
 
@@ -25,16 +26,22 @@ class ImportScripts::Phorum < ImportScripts::Base
     # First, create the field itself
     @custom_field = UserField.find_by_name("Geocaching ID")
     unless @custom_field
-      @custom_field = UserField.create(name: "Geocaching ID", description: "ID in Geocacahing", field_type: "text", editable: true, required: false, show_on_profile: true, show_on_user_card: true)
+      @custom_field = UserField.create(name: "Geocaching ID", description: "ID in Geocacahing", field_type: "text", editable: false, required: false, show_on_profile: true, show_on_user_card: true)
     end
 
   end
 
+  def tune_site_settings
+    SiteSetting.unicode_usernames = true
+  end
+
   def execute
+    tune_site_settings
     import_categories
     import_users
     import_posts
     import_attachments
+    create_permalinks
   end
 
   def import_users
@@ -57,6 +64,7 @@ class ImportScripts::Phorum < ImportScripts::Base
 
       create_users(results, total: total_count, offset: offset) do |user|
         next if user["username"].blank?
+        next if @lookup.user_id_from_imported_user_id(user["id"])
         {
           id: user["id"],
           email: user["email"],
@@ -65,19 +73,35 @@ class ImportScripts::Phorum < ImportScripts::Base
           created_at: Time.zone.at(user["created_at"]),
           last_seen_at: Time.zone.at(user["last_seen_at"]),
           admin: user["admin"] == 1,
-          post_create_action:
-            proc do |newuser|
-             if user["uid"].present?
-                newuser.custom_fields = {"user_field_#{@custom_field.id}" => user["uid"]}
-                newuser.save
-             end
-
-            Permalink.create(url: "#{BASE}profile.php?1,#{user['id']}", external_url: "/u/#{newuser.username}")
-            end,
+          custom_fields: {"user_field_#{@custom_field.id}" => user["uid"]},
         }
       end   
     end
   end
+
+
+  def create_permalinks
+    puts "", "Creating redirects...", ""
+
+    puts "", "Users...", ""
+    User.find_each do |u|
+      ucf = u.custom_fields
+      if ucf && ucf["import_id"] && ucf["import_username"]
+        begin
+          Permalink.find_or_create_by(url: "#{BASE}profile.php?1,#{ucf["import_id"]}", external_url: "/u/#{u.username}")
+        rescue StandardError
+          nil
+        end
+        
+        print_warning("#{BASE}profile.php?1,#{ucf["import_id"]} -> /u/#{u.username}")
+        print "."
+      end
+    end  
+
+    def print_warning(message)
+      $stderr.puts "#{message}"
+    end
+end
 
   def import_categories
     puts "", "importing categories..."
@@ -98,7 +122,7 @@ class ImportScripts::Phorum < ImportScripts::Base
 
     # uncomment below lines to create permalink
     categories.each do |category|
-      Permalink.create(url: "#{BASE}list.php?#{category['id']}", category_id: category_id_from_imported_category_id(category['id'].to_i))
+      Permalink.find_or_create_by(url: "#{BASE}list.php?#{category['id']}", category_id: category_id_from_imported_category_id(category['id'].to_i))
     end
   end
 
