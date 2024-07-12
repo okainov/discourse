@@ -7,6 +7,8 @@ require File.expand_path(File.dirname(__FILE__) + "/base.rb")
 class ImportScripts::Phorum < ImportScripts::Base
   PHORUM_DB = "phorum"
   TABLE_PREFIX = "phorum_"
+  # Set to non-empty value ending with "/" for permalinks
+  RELATIVE_URL_BASE = "phorum/"
   BATCH_SIZE = 1000
 
   def initialize
@@ -22,7 +24,7 @@ class ImportScripts::Phorum < ImportScripts::Base
     # Example of importing a custom profile field, uncomment if needed
     # First, create the field itself
     @custom_field = UserField.find_by_name("Geocaching ID")
-    unless @geo_uid_field
+    unless @custom_field
       @custom_field = UserField.create(name: "Geocaching ID", description: "ID in Geocacahing", field_type: "text", editable: true, required: false, show_on_profile: true, show_on_user_card: true)
     end
 
@@ -70,7 +72,7 @@ class ImportScripts::Phorum < ImportScripts::Base
                 newuser.save
              end
 
-            Permalink.create(url: "profile.php?1,#{user['id']}", external_url: "/u/#{newuser.username}")
+            Permalink.create(url: "#{BASE}profile.php?1,#{user['id']}", external_url: "/u/#{newuser.username}")
             end,
         }
       end   
@@ -96,7 +98,7 @@ class ImportScripts::Phorum < ImportScripts::Base
 
     # uncomment below lines to create permalink
     categories.each do |category|
-      Permalink.create(url: "list.php?#{category['id']}", category_id: category_id_from_imported_category_id(category['id'].to_i))
+      Permalink.create(url: "#{BASE}list.php?#{category['id']}", category_id: category_id_from_imported_category_id(category['id'].to_i))
     end
   end
 
@@ -155,7 +157,7 @@ class ImportScripts::Phorum < ImportScripts::Base
       results.each do |post|
         if post['parent_id'] == 0
           topic = topic_lookup_from_imported_post_id(post['id'].to_i)
-          Permalink.create(url: "read.php?#{post['category_id']},#{post['id']}", topic_id: topic[:topic_id].to_i)
+          Permalink.create(url: "#{BASE}read.php?#{post['category_id']},#{post['id']}", topic_id: topic[:topic_id].to_i)
         end
       end
     end
