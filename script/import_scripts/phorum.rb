@@ -96,6 +96,9 @@ class ImportScripts::Phorum < ImportScripts::Base
 
 
   def create_permalinks
+    def print_warning(message)
+      $stderr.puts "#{message}"
+    end
     puts "", "Creating redirects...", ""
 
     puts "", "Users...", ""
@@ -103,6 +106,7 @@ class ImportScripts::Phorum < ImportScripts::Base
       ucf = u.custom_fields
       if ucf && ucf["import_id"] && ucf["import_username"]
         begin
+          # puts "#{BASE}profile.php?1,#{ucf["import_id"]} -> /u/#{u.username}"
           Permalink.find_or_create_by(url: "#{BASE}profile.php?1,#{ucf["import_id"]}", external_url: "/u/#{u.username}")
         rescue StandardError
           nil
@@ -111,11 +115,8 @@ class ImportScripts::Phorum < ImportScripts::Base
         print_warning("#{BASE}profile.php?1,#{ucf["import_id"]} -> /u/#{u.username}")
         print "."
       end
-    end  
-
-    def print_warning(message)
-      $stderr.puts "#{message}"
     end
+
 end
 
   def import_categories
@@ -157,6 +158,7 @@ end
                m.user_id user_id,
                m.body raw,
                m.closed closed,
+               m.thread phorum_topic_id,
                m.datestamp created_at
         FROM #{TABLE_PREFIX}messages m
         ORDER BY m.datestamp
@@ -195,13 +197,20 @@ end
         skip ? nil : mapped
       end
 
-      # uncomment below lines to create permalink
       results.each do |post|
+        topic = topic_lookup_from_imported_post_id(post['id'].to_i)
+        puts "#{post.inspect} #{topic.inspect}"
         if post['parent_id'] == 0
-          topic = topic_lookup_from_imported_post_id(post['id'].to_i)
+          #puts "Topic: #{BASE}read.php?#{post['category_id']},#{post['id']} -> #{topic[:topic_id].to_i}"
           Permalink.create(url: "#{BASE}read.php?#{post['category_id']},#{post['id']}", topic_id: topic[:topic_id].to_i)
+        else
+          imported_topic_id = post["phorum_topic_id"]
+          imported_post_id = post_id_from_imported_post_id(post['id'].to_i)
+          #puts "Post: #{BASE}read.php?#{post['category_id']},#{imported_topic_id},#{post['id']} -> #{imported_post_id}"
+          Permalink.find_or_create_by(url: "#{BASE}read.php?#{post['category_id']},#{imported_topic_id},#{post['id']}", post_id: imported_post_id)
         end
       end
+
     end
   end
 
