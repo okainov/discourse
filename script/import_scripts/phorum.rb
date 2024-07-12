@@ -199,10 +199,10 @@ end
 
       results.each do |post|
         topic = topic_lookup_from_imported_post_id(post['id'].to_i)
-        puts "#{post.inspect} #{topic.inspect}"
+        #puts "#{post.inspect} #{topic.inspect}"
         if post['parent_id'] == 0
           #puts "Topic: #{BASE}read.php?#{post['category_id']},#{post['id']} -> #{topic[:topic_id].to_i}"
-          Permalink.create(url: "#{BASE}read.php?#{post['category_id']},#{post['id']}", topic_id: topic[:topic_id].to_i)
+          Permalink.find_or_create_by(url: "#{BASE}read.php?#{post['category_id']},#{post['id']}", topic_id: topic[:topic_id].to_i)
         else
           imported_topic_id = post["phorum_topic_id"]
           imported_post_id = post_id_from_imported_post_id(post['id'].to_i)
