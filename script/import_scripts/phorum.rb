@@ -39,6 +39,7 @@ class ImportScripts::Phorum < ImportScripts::Base
     tune_site_settings
     import_categories
     import_users
+    import_private_messages
     import_posts
     import_attachments
     create_permalinks
@@ -184,6 +185,87 @@ end
           Permalink.create(url: "#{BASE}read.php?#{post['category_id']},#{post['id']}", topic_id: topic[:topic_id].to_i)
         end
       end
+    end
+  end
+
+  
+  def import_private_messages
+    puts "", "creating private messages"
+
+    total_count = mysql_query("SELECT count(*) count from #{TABLE_PREFIX}pm_messages").first["count"]
+
+    batches(BATCH_SIZE) do |offset|
+      results =
+        mysql_query(
+          "
+        SELECT m.pm_message_id id,
+               m.subject title,
+               m.message message,
+               m.user_id user_id,
+               m.meta meta,
+               m.datestamp created_at
+        FROM #{TABLE_PREFIX}pm_messages m
+        ORDER BY m.datestamp
+        LIMIT #{BATCH_SIZE}
+        OFFSET #{offset};
+      ",
+        ).to_a
+
+      break if results.size < 1
+
+      create_messages(results, total: total_count, offset: offset) do |m|
+        skip = false
+        mapped = {}
+
+        mapped[:archetype] = Archetype.private_message
+        mapped[:id] = m["id"]
+        title = @htmlentities.decode(m["title"]).strip[0...255]
+        mapped[:title] = title
+        mapped[:user_id] = user_id_from_imported_user_id(m["user_id"]) || -1
+        mapped[:raw] = process_raw_post(m["message"], m["id"])
+        mapped[:target_usernames] = target_usernames.join(",")
+        mapped[:created_at] = Time.zone.at(m["created_at"])
+
+        
+        target_usernames = []
+        target_userids = []
+        begin
+          to_user_array = PHP.unserialize(m["meta"])["recepients"]
+        rescue StandardError
+          puts "#{m["id"]} -- #{m["meta"]}"
+          skip = true
+        end
+        
+        begin
+          to_user_array.each do |to_user|
+            user_id = user_id_from_imported_user_id(to_user["user_id"])
+            username = User.find_by(id: user_id).try(:username)
+            target_userids << user_id || Discourse::SYSTEM_USER_ID
+            target_usernames << username if username
+          end
+        rescue StandardError
+          puts "skipping pm-#{m["id"]} `to_user_array` is not properly serialized -- #{to_user_array.inspect}"
+          skip = true
+        end
+
+        participants = target_userids
+        participants << mapped[:user_id]
+        begin
+          participants.sort!
+        rescue StandardError
+          puts "one of the participant's id is nil -- #{participants.inspect}"
+        end
+
+        mapped[:target_usernames] = target_usernames.join(",")
+        if mapped[:target_usernames].size < 1 # pm with yourself?
+          # skip = true
+          mapped[:target_usernames] = "system"
+          puts "pm-#{m["id"]} has no target (#{m["meta"]})"
+        end
+
+        skip ? nil : mapped
+      end
+
     end
   end
 
