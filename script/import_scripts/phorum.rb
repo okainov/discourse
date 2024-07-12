@@ -213,7 +213,7 @@ end
         SELECT m.pm_message_id id,
                m.subject title,
                m.message message,
-               m.user_id user_id,
+               m.from_user_id user_id,
                m.meta meta,
                m.datestamp created_at
         FROM #{TABLE_PREFIX}pm_messages m
