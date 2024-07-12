@@ -8,7 +8,7 @@ class ImportScripts::Phorum < ImportScripts::Base
   PHORUM_DB = "phorum"
   TABLE_PREFIX = "phorum_"
   # Set to non-empty value ending with "/" for permalinks
-  RELATIVE_URL_BASE = "phorum/"
+  BASE = "phorum/"
   BATCH_SIZE = 1000
 
   def initialize
