@@ -226,7 +226,7 @@ end
         ).to_a
 
       break if results.size < 1
-      results.reject! { |pm| @lookup.post_already_imported?("pm-#{m["id"]}") }
+      results.reject! { |pm| @lookup.post_already_imported?("pm-#{pm["id"]}") }
       title_username_of_pm_first_post = {}
 
       create_posts(results, total: total_count, offset: offset) do |m|
@@ -253,7 +253,7 @@ end
           # The key is the ID of the user, so we only need key
           to_user_array.each do |to_user, user_hash|
             #puts "Looking for user #{to_user}..."
-            user_id = user_id_from_imported_user_id(to_user["user_id"])
+            user_id = user_id_from_imported_user_id(to_user)
             username = User.find_by(id: user_id).try(:username)
             target_userids << user_id || Discourse::SYSTEM_USER_ID
             target_usernames << username if username
