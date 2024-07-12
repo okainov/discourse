@@ -174,7 +174,9 @@ class ImportScripts::Phorum < ImportScripts::Base
     s.gsub!(%r{\[http(s)?://(www\.)?}, "[")
 
     # [QUOTE]...[/QUOTE]
-    s.gsub!(%r{\[quote\](.+?)\[/quote\]}im) { "\n> #{$1}\n" }
+    # Seems no need in this, Discourse recognizes "quote" normally,
+    # it only needs to be on the new lines (which will be handled by the next line)
+    #s.gsub!(%r{\[quote\](.+?)\[/quote\]}im) { "\n> #{$1}\n" }
 
     # Nested Quotes
     s.gsub!(%r{(\[/?QUOTE.*?\])}mi) { |q| "\n#{q}\n" }
@@ -187,14 +189,22 @@ class ImportScripts::Phorum < ImportScripts::Base
     end
 
     # [size=...]...[/size]
-    s.gsub!(%r{\[size=large](.+)\[/size\]}i) { "<big>{$1}</big>" }
-    s.gsub!(%r{\[size=x.large](.+)\[/size\]}i) { "<big>{$1}</big>" }
+    s.gsub!(%r{\[size=large](.+)\[/size\]}i) { "<big>#{$1}</big>" }
+    s.gsub!(%r{\[size=x.large](.+)\[/size\]}i) { "<big>#{$1}</big>" }
+    s.gsub!(%r{\[size=medium](.+)\[/size\]}i) { "#{$1}" }
+    s.gsub!(%r{\[size=small](.+)\[/size\]}i) { "<small>#{$1}</small>" }
+    s.gsub!(%r{\[size=x.small](.+)\[/size\]}i) { "<small>#{$1}</small>" }
+
+    # [spoiler]...[/spoiler] is not Discourse Spoiler, but details
+    s.gsub!(%r{\[spoiler=(.+?)\](.+)\[/spoiler\]}i) { "[details=#{$1}](#{$2})[/details]" }
+    s.gsub!(%r{\[spoiler\](.+)\[/spoiler\]}i) { "[details](#{$1})[/details]" }
 
     # [URL=...]...[/URL]
     s.gsub!(%r{\[url="?(.+?)"?\](.+)\[/url\]}i) { "[#{$2}](#{$1})" }
 
     # [IMG]...[/IMG]
-    s.gsub!(%r{\[/?img\]}i, "")
+    # Do not strip images
+    #s.gsub!(%r{\[/?img\]}i, "")
 
     # convert list tags to ul and list=1 tags to ol
     # (basically, we're only missing list=a here...)
@@ -230,7 +240,7 @@ class ImportScripts::Phorum < ImportScripts::Base
     # [USER=706]@username[/USER]
     s.gsub!(%r{\[user="?(.+?)"?\](.+)\[/user\]}i) { $2 }
 
-    # Remove the color tag
+    # Remove the color tag as it's not supported
     s.gsub!(/\[color=[#a-z0-9]+\]/i, "")
     s.gsub!(%r{\[/color\]}i, "")
 
