@@ -19,6 +19,13 @@ class ImportScripts::Phorum < ImportScripts::Base
         password: "",
         database: PHORUM_DB,
       )
+    # Example of importing a custom profile field, uncomment if needed
+    # First, create the field itself
+    @custom_field = UserField.find_by_name("Geocaching ID")
+    unless @geo_uid_field
+      @custom_field = UserField.create(name: "Geocaching ID", description: "ID in Geocacahing", field_type: "text", editable: true, required: false, show_on_profile: true, show_on_user_card: true)
+    end
+
   end
 
   def execute
@@ -55,10 +62,14 @@ class ImportScripts::Phorum < ImportScripts::Base
           name: user["name"],
           created_at: Time.zone.at(user["created_at"]),
           last_seen_at: Time.zone.at(user["last_seen_at"]),
-          custom_fields: {
-              geocaching_uid: user["uid"],
-          },
           admin: user["admin"] == 1,
+          post_create_action:
+            proc do |newuser|
+             if user["uid"].present?
+                newuser.custom_fields = {"user_field_#{@custom_field.id}" => user["uid"]}
+                newuser.save
+             end
+            end,
         }
       end
     end
