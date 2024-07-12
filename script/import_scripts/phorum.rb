@@ -2,6 +2,18 @@
 
 require "mysql2"
 
+begin
+  require "php_serialize" # https://github.com/jqr/php-serialize
+rescue LoadError
+  puts
+  puts "php_serialize not found."
+  puts "Add to Gemfile, like this: "
+  puts
+  puts "echo gem \\'php-serialize\\' >> Gemfile"
+  puts "bundle install"
+  exit
+end
+
 require File.expand_path(File.dirname(__FILE__) + "/base.rb")
 
 class ImportScripts::Phorum < ImportScripts::Base
