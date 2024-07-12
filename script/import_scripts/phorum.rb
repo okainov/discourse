@@ -69,9 +69,11 @@ class ImportScripts::Phorum < ImportScripts::Base
                 newuser.custom_fields = {"user_field_#{@custom_field.id}" => user["uid"]}
                 newuser.save
              end
+
+            Permalink.create(url: "profile.php?1,#{user['id']}", external_url: "/u/#{newuser.username}")
             end,
         }
-      end
+      end   
     end
   end
 
