@@ -29,8 +29,8 @@ class ImportScripts::Phorum < ImportScripts::Base
   end
 
   def execute
-    import_users
     import_categories
+    import_users
     import_posts
     import_attachments
   end
