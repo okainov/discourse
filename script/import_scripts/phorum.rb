@@ -173,7 +173,6 @@ end
 
         mapped[:id] = m["id"]
         mapped[:user_id] = user_id_from_imported_user_id(m["user_id"]) || -1
-        mapped[:raw] = process_raw_post(m["raw"], m["id"])
         mapped[:created_at] = Time.zone.at(m["created_at"])
 
         if m["parent_id"] == 0
@@ -187,7 +186,11 @@ end
             puts "Parent post #{m["parent_id"]} doesn't exist. Skipping #{m["id"]}: #{m["title"][0..40]}"
             skip = true
           end
+          if m["title"] && !m["title"].start_with?("Re:")
+            m["raw"] = "**#{m["title"]}**\n\n#{m["raw"]}"
+          end
         end
+        mapped[:raw] = process_raw_post(m["raw"], m["id"])
 
         skip ? nil : mapped
       end
